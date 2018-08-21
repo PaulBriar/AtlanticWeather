@@ -1,6 +1,8 @@
 package com.paulbriar.atlanticweather;
 
 import android.content.Context;
+import android.databinding.DataBindingUtil;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -8,12 +10,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.paulbriar.atlanticweather.databinding.ActivityMainBinding;
+
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -26,20 +31,30 @@ public class MainActivity extends AppCompatActivity {
     public static final String TAG = MainActivity.class.getSimpleName();
 
     private CurrentWeather currentWeather;
+    private ImageView iconImageView;
+
+    final double latitude = 37.8267;
+    final double longitude = -122.4233;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        getForecast(latitude,longitude);
+    }
+
+    private void getForecast(double latitude, double longitude) {
+        final ActivityMainBinding binding = DataBindingUtil.setContentView(MainActivity.this,
+                R.layout.activity_main);
 
         //Dark Sky Powered by link
         TextView darkSky = findViewById(R.id.darkSkyAttribution);
         darkSky.setMovementMethod(LinkMovementMethod.getInstance());
 
+        iconImageView = findViewById(R.id.iconImageView);
+
         //Dark Sky API details
         String apiKey = "20dcaf8455a75495b5df7aa370319274";
-        double latitude = 37.8267;
-        double longitude = -122.4233;
+
 
         String forecastURL = "https://api.darksky.net/forecast/" + apiKey + "/" + latitude + "," + longitude;
 
@@ -65,6 +80,29 @@ public class MainActivity extends AppCompatActivity {
                         Log.v(TAG, jsonData);
                         if (response.isSuccessful()) {
                             currentWeather = getCurrentDetails(jsonData);
+
+                            final CurrentWeather displayWeather = new CurrentWeather(
+                                    currentWeather.getLocationLabel(),
+                                    currentWeather.getIcon(),
+                                    currentWeather.getTime(),
+                                    currentWeather.getTemperature(),
+                                    currentWeather.getHumidity(),
+                                    currentWeather.getPrecipChance(),
+                                    currentWeather.getSummary(),
+                                    currentWeather.getTimeZone()
+                            );
+
+                            binding.setWeather(displayWeather);
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Drawable drawable = getResources().getDrawable(displayWeather.getIconId());
+                                    iconImageView.setImageDrawable(drawable);
+                                }
+                            });
+
+
                         } else {
                             alertUserAboutError();
                         }
@@ -130,5 +168,10 @@ public class MainActivity extends AppCompatActivity {
     private void alertUserAboutError() {
         AlertDialogFragment dialog = new AlertDialogFragment();
         dialog.show(getSupportFragmentManager(), "error dialog");
+    }
+
+    public void refreshOnClick(View v) {
+        Toast.makeText(this, "Refreshing Forecast", Toast.LENGTH_SHORT).show();
+        getForecast(latitude,longitude);
     }
 }
